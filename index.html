@@ -441,7 +441,7 @@
       <div class="col-lg-6">
         <div class="mono mb-1" style="color:var(--muted);font-size:.8rem">the two decryptions</div>
         <div class="formula">P₁ = D(K, C₁) ⊕ IV<br>P₂ = D(K, C₂) ⊕ C₁</div>
-        <p class="mt-2 mb-0" style="color:var(--muted);font-size:.9rem"><span style="color:var(--cipher-d);font-weight:700">C₁ appears in both lines.</span> </p>
+        <p class="mt-2 mb-0" style="color:var(--muted);font-size:.9rem"><span style="color:var(--cipher-d);font-weight:700">C₁ appears in both lines.</span> That's the answer to “where is P₁?” — editing C₁ wrecks P₁ (top line) <i>and</i> rewrites P₂ (bottom line).</p>
       </div>
       <div class="col-lg-6">
         <div class="mono mb-1" style="color:var(--muted);font-size:.8rem">C₁ bytes travelling on the wire</div>
@@ -458,7 +458,19 @@
 </div></section>
 
 <!-- ============ FOOTER ============ -->
-
+<footer style="padding:48px 0 70px"><div class="wrap footer">
+  <div class="card-soft pad">
+    <h3 class="mb-2" style="color:var(--text)">Host this for your students (GitHub Pages)</h3>
+    <ol class="mb-0">
+      <li>Create a new public repo, e.g. <code>cipher-modes</code>.</li>
+      <li>Upload this file — keep the name <code>index.html</code>.</li>
+      <li>Go to <b>Settings → Pages</b>, set <b>Branch: main / root</b>, Save.</li>
+      <li>Your shareable link appears in a minute: <code>https://&lt;your-username&gt;.github.io/cipher-modes/</code></li>
+    </ol>
+    <hr style="border-color:var(--border)">
+    <p class="mb-0" style="color:var(--muted-2);font-size:.85rem">Everything runs in the browser — no build step, no backend. Edit the text or colours directly in the file. Built for the classroom.</p>
+  </div>
+</div></footer>
 
 <!-- Bootstrap bundle (tabs/pills) -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
@@ -488,7 +500,9 @@
     return e;
   }
   function anchors(n){
-    const hw=n.w/2, hh=n.h/2;
+    // sizes may not be assigned yet at spec-build time → fall back to sizeOf(kind)
+    const s = sizeOf(n.kind);
+    const hw=(n.w||s.w)/2, hh=(n.h||s.h)/2;
     return {
       t:{x:n.cx,y:n.cy-hh}, b:{x:n.cx,y:n.cy+hh},
       l:{x:n.cx-hw,y:n.cy}, r:{x:n.cx+hw,y:n.cy}, c:{x:n.cx,y:n.cy}
