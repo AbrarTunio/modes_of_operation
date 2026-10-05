@@ -1,0 +1,772 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Block Cipher Modes — ECB, CBC, CFB, OFB &amp; CTR, step-by-step</title>
+<meta name="description" content="A beginner-friendly, click-through simulator for block cipher modes of operation: ECB, CBC, CFB, OFB and CTR." />
+
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+
+<style>
+  :root{
+    --bg:#0a1020; --surface:#121c33; --surface-2:#182544;
+    --border:#263657; --border-soft:#1f2d4a;
+    --text:#e7eefb; --muted:#93a4c6; --muted-2:#6d80a6;
+    --plain:#f5b942; --plain-ink:#2a1d00;
+    --cipher:#32cfe6; --cipher-ink:#042a33;
+    --iv:#58d27a; --iv-ink:#042814;
+    --keys:#49d6b4; --keys-ink:#032a22;
+    --xor:#b394ff; --key:#ff6ea0; --danger:#ff5d6c;
+    --radius:14px;
+    box-sizing:border-box;
+    padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+  }
+  *,*::before,*::after{box-sizing:inherit}
+  html{scroll-behavior:smooth; scroll-padding-top:76px}
+  @media (prefers-reduced-motion: reduce){ html{scroll-behavior:auto} }
+  body{
+    margin:0;
+    background:
+      radial-gradient(1100px 600px at 80% -10%, rgba(50,207,230,.10), transparent 60%),
+      radial-gradient(900px 500px at -5% 10%, rgba(179,148,255,.10), transparent 55%),
+      var(--bg);
+    color:var(--text); font-family:"Inter",system-ui,sans-serif; font-size:16px; line-height:1.6;
+    -webkit-font-smoothing:antialiased;
+  }
+  .mono{font-family:"JetBrains Mono",ui-monospace,Menlo,monospace}
+  .wrap{max-width:1080px;margin-inline:auto;padding-inline:20px}
+  a{color:var(--cipher)}
+  h1,h2,h3{letter-spacing:-.02em;line-height:1.15;font-weight:800}
+  h2{font-size:clamp(1.5rem,3.4vw,2.2rem);margin:0 0 .4em}
+  h3{font-size:1.2rem;font-weight:700}
+  .lead{color:var(--muted);font-size:1.06rem}
+  .eyebrow{font-family:"JetBrains Mono",monospace;font-size:.78rem;color:var(--cipher);letter-spacing:.04em;margin-bottom:.5rem}
+
+  .nav-blur{position:sticky;top:0;z-index:50;background:rgba(10,16,32,.78);backdrop-filter:blur(10px);
+            border-bottom:1px solid var(--border-soft);padding-top:env(safe-area-inset-top,0px)}
+  .nav-blur .brand{font-weight:800;color:var(--text);text-decoration:none;font-size:1.02rem}
+  .nav-blur .brand .dot{color:var(--cipher)}
+  .nav-blur a.navlink{color:var(--muted);text-decoration:none;font-size:.92rem;font-weight:500;padding:.35rem .6rem;border-radius:8px;white-space:nowrap}
+  .nav-blur a.navlink:hover{color:var(--text);background:var(--surface-2)}
+
+  section{padding:64px 0;border-top:1px solid var(--border-soft)}
+  section:first-of-type{border-top:0}
+  .card-soft{background:linear-gradient(180deg,var(--surface),#0f1830);border:1px solid var(--border);border-radius:var(--radius)}
+  .pad{padding:clamp(18px,3vw,28px)}
+
+  .hero{padding:56px 0 48px}
+  .hero h1{font-size:clamp(2rem,5.6vw,3.4rem);margin:.2em 0 .35em}
+  .hero .thesis{border-left:3px solid var(--cipher);padding:.2rem 0 .2rem 1rem;color:var(--muted);font-size:1.08rem;max-width:56ch}
+  .ecb-demo{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+  .ecb-cell{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px;text-align:center}
+  .ecb-cell canvas{width:100%;height:auto;image-rendering:pixelated;border-radius:8px;display:block;background:#000}
+  .ecb-cell .cap{font-size:.82rem;color:var(--muted);margin-top:8px;font-weight:600}
+  .ecb-cell .tag{font-family:"JetBrains Mono",monospace;font-size:.72rem;display:inline-block;margin-top:2px;padding:1px 8px;border-radius:99px}
+  .tag.bad{color:#ffd1d6;background:rgba(255,93,108,.16)} .tag.ok{color:#c9ffe1;background:rgba(88,210,122,.16)}
+
+  .msg-strip{display:flex;gap:8px;flex-wrap:wrap}
+  .blk{flex:1 1 150px;min-width:120px;height:62px;border-radius:10px;display:flex;align-items:center;justify-content:center;
+       flex-direction:column;font-family:"JetBrains Mono",monospace;font-size:.8rem;color:#cfe;background:var(--surface-2);
+       border:1px dashed var(--border);transition:transform .3s,box-shadow .3s,border-color .3s}
+  .blk small{color:var(--muted-2);font-size:.68rem}
+  .blk.pad{border-style:solid;border-color:var(--plain);color:var(--plain);background:rgba(245,185,66,.08)}
+  .blk.flash{transform:translateY(-4px);box-shadow:0 10px 24px rgba(50,207,230,.22);border-color:var(--cipher)}
+
+  .legend{display:flex;flex-wrap:wrap;gap:10px}
+  .chip{display:inline-flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--border);border-radius:99px;padding:6px 12px;font-size:.85rem;font-weight:600}
+  .swatch{width:14px;height:14px;border-radius:4px;display:inline-block} .swatch.round{border-radius:50%}
+
+  .bitrow{display:flex;gap:6px;flex-wrap:wrap}
+  .bit{width:40px;height:40px;border-radius:8px;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;
+       font-family:"JetBrains Mono",monospace;font-weight:700;font-size:1.05rem;cursor:pointer;user-select:none;background:var(--surface-2);transition:.15s}
+  .bit.on{background:var(--cipher);color:var(--cipher-ink);border-color:var(--cipher)}
+  .bit.out{cursor:default} .bit.out.on{background:var(--xor);color:#1a1033;border-color:var(--xor)}
+  .bitlabel{width:28px;font-family:"JetBrains Mono",monospace;color:var(--muted);display:flex;align-items:center;font-size:.9rem}
+
+  .nav-pills .nav-link{color:var(--muted);font-weight:700;border:1px solid var(--border);background:var(--surface);margin:4px;
+                       font-family:"JetBrains Mono",monospace;letter-spacing:.02em}
+  .nav-pills .nav-link.active{background:var(--cipher);color:#04222a;border-color:var(--cipher)}
+  .nav-pills .nav-link small{display:block;font-family:"Inter",sans-serif;font-weight:500;font-size:.66rem;opacity:.8}
+
+  .diagram-scroll{overflow-x:auto;padding-bottom:6px}
+  svg.diagram{width:100%;min-width:720px;height:auto;display:block}
+
+  .node rect,.node circle{transition:filter .25s,opacity .25s;opacity:.5}
+  .node.lit rect,.node.lit circle{opacity:1}
+  .node.lit.n-plain rect{filter:drop-shadow(0 0 10px rgba(245,185,66,.65))}
+  .node.lit.n-cipher rect{filter:drop-shadow(0 0 10px rgba(50,207,230,.65))}
+  .node.lit.n-iv rect{filter:drop-shadow(0 0 10px rgba(88,210,122,.6))}
+  .node.lit.n-counter rect{filter:drop-shadow(0 0 10px rgba(88,210,122,.6))}
+  .node.lit.n-keys rect{filter:drop-shadow(0 0 10px rgba(73,214,180,.6))}
+  .node.lit.n-enc rect{filter:drop-shadow(0 0 12px rgba(50,207,230,.5))}
+  .node.lit.n-xor circle{filter:drop-shadow(0 0 10px rgba(179,148,255,.7))}
+  .node.focus rect,.node.focus circle{stroke:#fff;stroke-width:2.6}
+  .node text{font-family:"JetBrains Mono",monospace;font-weight:700;fill:#07121f}
+  .node .sub{font-size:10px;font-weight:500}
+  .edge{fill:none;stroke:var(--border);stroke-width:2.2;opacity:.55;transition:stroke .2s,opacity .2s}
+  .edge.hot{stroke:#8fd9ff;opacity:1}
+  .pulse{filter:drop-shadow(0 0 6px currentColor)}
+  .samebadge{fill:var(--danger);font-size:11px;font-weight:700;font-family:"JetBrains Mono",monospace}
+
+  .sim-panel{background:var(--surface-2);border:1px solid var(--border);border-left:3px solid var(--cipher);
+             border-radius:12px;padding:16px 18px;margin-top:16px;min-height:118px}
+  .sim-head{display:flex;align-items:center;gap:10px;margin-bottom:8px;flex-wrap:wrap}
+  .step-pill{font-family:"JetBrains Mono",monospace;background:var(--cipher);color:#04222a;border-radius:99px;
+             padding:2px 11px;font-size:.78rem;font-weight:700;white-space:nowrap}
+  .sim-title{font-weight:700;color:var(--text);font-size:1.02rem}
+  .sim-do{font-size:1.08rem;color:var(--text)}
+  .sim-do b{color:var(--cipher)}
+  .sim-why{margin-top:7px;color:var(--muted);font-size:.96rem}
+  .sim-why b{color:var(--iv)}
+  .sim-controls{display:flex;gap:10px;align-items:center;margin-top:16px;flex-wrap:wrap}
+  .btn-next{min-width:160px;font-weight:800;--bs-btn-color:#04222a}
+  .btn-next:disabled{opacity:.4}
+  .done-note{color:var(--iv);font-weight:600;font-size:.9rem}
+  @media (max-width:640px){
+    .btn-next{flex:1 1 100%;order:-1;padding-block:.6rem}
+    .sim-controls .btn{flex:1 1 44%}
+  }
+
+  .formula{font-family:"JetBrains Mono",monospace;background:#0b1428;border:1px solid var(--border);border-radius:10px;
+           padding:12px 14px;color:#bfe9ff;font-size:.92rem;overflow-x:auto;white-space:nowrap}
+  .notice li{margin-bottom:.35rem} .notice li b{color:var(--text)}
+
+  .pgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+  .pcell{border-radius:10px;border:1px solid var(--border);background:var(--surface-2);text-align:center;padding:12px 6px;font-family:"JetBrains Mono",monospace}
+  .pcell .lbl{font-size:.72rem;color:var(--muted-2)} .pcell .val{font-size:1rem;margin-top:4px;color:#cfe}
+  .pcell.garbage{border-color:var(--danger);background:rgba(255,93,108,.12);color:var(--danger)}
+  .pcell.bitflip{border-color:var(--plain);background:rgba(245,185,66,.12);color:var(--plain)}
+
+  .table-dark-soft{--bs-table-bg:transparent;color:var(--text);border-color:var(--border)}
+  .table-dark-soft th{color:var(--muted);font-weight:700;border-color:var(--border)}
+  .table-dark-soft td{border-color:var(--border-soft);font-family:"JetBrains Mono",monospace;font-size:.9rem}
+  .table-dark-soft tbody tr:hover td{background:var(--surface-2)}
+  td.no{color:var(--danger);font-weight:700} td.yes{color:var(--iv);font-weight:700}
+  .integrity-col.spot{box-shadow:inset 0 0 0 2px var(--danger)}
+
+  .byte{display:inline-flex;flex-direction:column;align-items:center;gap:4px;margin:3px}
+  .byte .b{width:48px;height:42px;border-radius:8px;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;
+           font-family:"JetBrains Mono",monospace;font-weight:700;background:var(--surface-2);transition:.2s}
+  .byte .c{font-size:.7rem;color:var(--muted-2);font-family:"JetBrains Mono",monospace}
+  .byte .b.changed{background:rgba(255,93,108,.18);border-color:var(--danger);color:#ffd1d6}
+  .byte .b.target{background:rgba(88,210,122,.16);border-color:var(--iv);color:#c9ffe1}
+
+  .footer{color:var(--muted);font-size:.9rem}
+  .footer code{color:#bfe9ff;background:#0b1428;padding:2px 7px;border-radius:6px;border:1px solid var(--border)}
+
+  @media (max-width:640px){ .ecb-demo{grid-template-columns:1fr} .pgrid{grid-template-columns:repeat(2,1fr)} section{padding:48px 0} }
+</style>
+</head>
+<body>
+
+<div class="nav-blur">
+  <div class="wrap d-flex align-items-center justify-content-between" style="padding-block:10px">
+    <a href="#top" class="brand">cipher<span class="dot">·</span>modes</a>
+    <nav class="d-none d-md-flex align-items-center gap-1">
+      <a class="navlink" href="#why">Why</a>
+      <a class="navlink" href="#blocks">Building blocks</a>
+      <a class="navlink" href="#modes">Simulator</a>
+      <a class="navlink" href="#errors">Errors</a>
+      <a class="navlink" href="#compare">Compare</a>
+      <a class="navlink" href="#attack">The attack</a>
+    </nav>
+  </div>
+</div>
+
+<a id="top"></a>
+
+<!-- HERO -->
+<div class="wrap hero">
+  <div class="row g-4 align-items-center">
+    <div class="col-lg-6">
+      <div class="eyebrow mono">// cryptography · lesson</div>
+      <h1>The cipher is fine.<br>The <span style="color:var(--cipher)">mode</span> is where it leaks.</h1>
+      <p class="thesis">AES can only lock one 128-bit block at a time. A <b>mode of operation</b> is the rule for locking a whole message. Pick the wrong rule and your secret is readable — even though the encryption never broke.</p>
+      <div class="d-flex gap-2 mt-4 flex-wrap">
+        <a href="#modes" class="btn btn-info btn-lg fw-semibold" style="--bs-btn-color:#04222a">Open the simulator →</a>
+        <a href="#why" class="btn btn-outline-light btn-lg">Start from zero</a>
+      </div>
+    </div>
+    <div class="col-lg-6">
+      <div class="card-soft pad">
+        <p class="mb-3" style="color:var(--muted);font-size:.9rem">Same picture. Same AES key. The only thing that changed is the mode:</p>
+        <div class="ecb-demo">
+          <div class="ecb-cell"><canvas id="ecbSrc" width="120" height="120"></canvas><div class="cap">Original</div></div>
+          <div class="ecb-cell"><canvas id="ecbBad" width="120" height="120"></canvas><div class="cap">Encrypted with ECB</div><span class="tag bad mono">leaks</span></div>
+          <div class="ecb-cell"><canvas id="ecbGood" width="120" height="120"></canvas><div class="cap">Encrypted with CBC / CTR</div><span class="tag ok mono">safe</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- WHY -->
+<section id="why"><div class="wrap">
+  <div class="eyebrow mono">// 01</div>
+  <h2>Why do we even need a “mode”?</h2>
+  <p class="lead" style="max-width:62ch">AES is a <b>block cipher</b>. It takes in exactly 128 bits (16 bytes) and gives back 128 bits. That's it. But real messages are never exactly 16 bytes. So we need a rule for feeding a long message through a machine that only accepts one block at a time. That rule is the mode.</p>
+  <div class="card-soft pad mt-4">
+    <h3 class="mb-3">Your message gets chopped into 128-bit blocks</h3>
+    <div class="msg-strip" id="msgStrip">
+      <div class="blk">block 1<small>128 bits</small></div>
+      <div class="blk">block 2<small>128 bits</small></div>
+      <div class="blk">block 3<small>128 bits</small></div>
+      <div class="blk pad">block 4 + padding<small>filled to 128 bits</small></div>
+    </div>
+    <p class="mt-3 mb-0" style="color:var(--muted);font-size:.95rem">The last block is rarely full, so we <b style="color:var(--plain)">pad</b> it. The common scheme, <span class="mono">PKCS#7</span>, adds <i>n</i> bytes each equal to <i>n</i> — so the receiver always knows exactly how much to remove.</p>
+  </div>
+  <div class="row g-3 mt-2">
+    <div class="col-md-7"><div class="card-soft pad h-100">
+      <h3>The IV — your “randomiser”</h3>
+      <p style="color:var(--muted)" class="mb-2">An <b style="color:var(--iv)">Initialisation Vector</b> is one extra block that makes the first block come out differently every time. Without it, encrypting the same message twice gives the identical ciphertext — a dead giveaway.</p>
+      <ul class="mb-0" style="color:var(--muted)">
+        <li>It is <b>not secret</b> — it's sent in the clear, usually as the first block.</li>
+        <li>For CBC it must be <b>unpredictable</b> (a predictable IV broke TLS 1.0 — the BEAST attack).</li>
+        <li>For counter modes a nonce must <b>never repeat</b> under the same key. Ever.</li>
+      </ul>
+    </div></div>
+    <div class="col-md-5"><div class="card-soft pad h-100 d-flex flex-column justify-content-center">
+      <div class="mono" style="color:var(--muted);font-size:.82rem">one block of AES</div>
+      <div class="mono" style="font-size:1.6rem;color:var(--cipher);font-weight:700">128 bits</div>
+      <div class="mono" style="color:var(--muted);font-size:.82rem">= 16 bytes = one lock</div>
+      <hr style="border-color:var(--border)">
+      <div style="color:var(--muted);font-size:.92rem">A mode chains many of these locks together into one message.</div>
+    </div></div>
+  </div>
+</div></section>
+
+<!-- BUILDING BLOCKS -->
+<section id="blocks"><div class="wrap">
+  <div class="eyebrow mono">// 02</div>
+  <h2>Meet the building blocks</h2>
+  <p class="lead" style="max-width:60ch">Every diagram in the simulator is made of the same few pieces. Learn these colours once and all five modes read like a picture book.</p>
+  <div class="legend mt-3">
+    <span class="chip"><span class="swatch" style="background:var(--plain)"></span>Plaintext (your data)</span>
+    <span class="chip"><span class="swatch" style="background:var(--cipher)"></span>Ciphertext (locked data)</span>
+    <span class="chip"><span class="swatch" style="background:var(--iv)"></span>IV / nonce / counter</span>
+    <span class="chip"><span class="swatch" style="background:var(--keys)"></span>Keystream</span>
+    <span class="chip"><span class="swatch round" style="background:var(--xor)"></span>⊕ XOR</span>
+    <span class="chip"><span class="swatch" style="background:#22314f;border:1px solid var(--cipher)"></span>E = AES encrypt</span>
+  </div>
+  <div class="card-soft pad mt-4">
+    <h3>The one operation that powers all of this: XOR</h3>
+    <p style="color:var(--muted)" class="mb-3">XOR (⊕) outputs <span class="mono">1</span> only when the two bits differ. Tap the top rows to flip bits and watch the result. The magic property: <b class="mono">A ⊕ B ⊕ B = A</b> — XOR the same thing twice and you're back to the start. That's exactly how decryption undoes encryption.</p>
+    <div class="d-flex flex-column gap-2" style="max-width:520px">
+      <div class="d-flex align-items-center gap-2"><span class="bitlabel">A</span><div class="bitrow" id="xorA"></div></div>
+      <div class="d-flex align-items-center gap-2"><span class="bitlabel">B</span><div class="bitrow" id="xorB"></div></div>
+      <div style="border-top:1px dashed var(--border);margin:4px 0"></div>
+      <div class="d-flex align-items-center gap-2"><span class="bitlabel" style="color:var(--xor)">⊕</span><div class="bitrow" id="xorOut"></div></div>
+    </div>
+  </div>
+</div></section>
+
+<!-- SIMULATOR -->
+<section id="modes"><div class="wrap">
+  <div class="eyebrow mono">// 03 · the simulator</div>
+  <h2>Step through each mode</h2>
+  <p class="lead" style="max-width:66ch">Pick a mode, then just keep pressing <b>Next</b>. Each step lights up one piece of the machine and the panel tells you <b>what is happening</b> and <b>why it matters</b>. (Keyboard: <span class="mono">→</span> next, <span class="mono">←</span> back.)</p>
+
+  <ul class="nav nav-pills justify-content-center mt-4" id="modeTabs" role="tablist">
+    <li class="nav-item"><button class="nav-link active" data-bs-toggle="pill" data-bs-target="#p-ecb" type="button">ECB<small>never use it</small></button></li>
+    <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#p-cbc" type="button">CBC<small>the chain</small></button></li>
+    <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#p-cfb" type="button">CFB<small>stream-ish</small></button></li>
+    <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#p-ofb" type="button">OFB<small>pre-computable</small></button></li>
+    <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#p-ctr" type="button">CTR<small>modern pick</small></button></li>
+  </ul>
+
+  <div class="tab-content mt-4">
+    <div class="tab-pane fade show active" id="p-ecb"></div>
+    <div class="tab-pane fade" id="p-cbc"></div>
+    <div class="tab-pane fade" id="p-cfb"></div>
+    <div class="tab-pane fade" id="p-ofb"></div>
+    <div class="tab-pane fade" id="p-ctr"></div>
+  </div>
+</div></section>
+
+<!-- ERRORS -->
+<section id="errors"><div class="wrap">
+  <div class="eyebrow mono">// 04</div>
+  <h2>What happens if a bit gets damaged in transit?</h2>
+  <p class="lead" style="max-width:64ch">Networks flip bits. A mode's <b>error propagation</b> is how far that damage spreads when it's decrypted. Imagine one bit of <span class="mono" style="color:var(--cipher)">C₂</span> arrives wrong. Pick a mode and see which decrypted blocks survive.</p>
+  <div class="card-soft pad mt-3">
+    <div class="d-flex flex-wrap gap-2 mb-3" id="errBtns"></div>
+    <div class="pgrid" id="errGrid"></div>
+    <div class="sim-panel" id="errNote" style="min-height:auto">Pick a mode above.</div>
+    <p class="mb-0 mt-2" style="color:var(--muted-2);font-size:.85rem">
+      <span style="color:var(--danger)">damaged block</span> = unreadable garbage ·
+      <span style="color:var(--plain)">one-bit flip</span> = only that single bit is wrong · plain = untouched</p>
+  </div>
+</div></section>
+
+<!-- COMPARE -->
+<section id="compare"><div class="wrap">
+  <div class="eyebrow mono">// 05</div>
+  <h2>The whole thing on one page</h2>
+  <p class="lead" style="max-width:62ch">Everything you stepped through, as a table. Read down the columns to compare — then read the <b>last</b> column carefully.</p>
+  <div class="card-soft pad mt-3">
+    <div class="table-responsive">
+      <table class="table table-dark-soft align-middle mb-0" id="cmpTable">
+        <thead><tr>
+          <th>Mode</th><th>Padding?</th><th>Encrypt in parallel?</th><th>Decrypt in parallel?</th>
+          <th>Jump to any block?</th><th>Error spreads</th><th class="integrity-col">Integrity?</th>
+        </tr></thead>
+        <tbody>
+          <tr><td>ECB</td><td>Yes</td><td class="yes">Yes</td><td class="yes">Yes</td><td class="yes">Yes</td><td>1 block</td><td class="no integrity-col">No</td></tr>
+          <tr><td>CBC</td><td>Yes</td><td class="no">No</td><td class="yes">Yes</td><td>Decrypt only</td><td>2 blocks</td><td class="no integrity-col">No</td></tr>
+          <tr><td>CFB</td><td>No</td><td class="no">No</td><td class="yes">Yes</td><td class="no">No</td><td>2 blocks</td><td class="no integrity-col">No</td></tr>
+          <tr><td>OFB</td><td>No</td><td class="no">No</td><td class="no">No</td><td class="no">No</td><td>1 bit</td><td class="no integrity-col">No</td></tr>
+          <tr><td>CTR</td><td>No</td><td class="yes">Yes</td><td class="yes">Yes</td><td class="yes">Yes</td><td>1 bit</td><td class="no integrity-col">No</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="d-flex align-items-center gap-3 mt-3 flex-wrap">
+      <button class="btn btn-outline-danger" id="spotBtn">Why does the last column matter?</button>
+      <div id="spotMsg" style="color:var(--danger);font-weight:600;display:none">Not one mode protects integrity. Every one keeps your data <i>secret</i> — none of them stops an attacker from <i>changing</i> it. That gap is the whole reason the next lesson exists. 👇</div>
+    </div>
+  </div>
+</div></section>
+
+<!-- ATTACK (also a step simulator) -->
+<section id="attack"><div class="wrap">
+  <div class="eyebrow mono">// 06 · the finale</div>
+  <h2>Breaking CBC without the key</h2>
+  <p class="lead" style="max-width:64ch">The proof that “secret” isn't “safe”. Step through the attack — press <b>Next</b> and watch an attacker rewrite the message without ever seeing the key.</p>
+
+  <div class="card-soft pad mt-3">
+    <div class="row g-4 mt-1">
+      <div class="col-md-6">
+        <div class="mono mb-1" style="color:var(--muted);font-size:.8rem">Ciphertext block C₁ (sent in the clear)</div>
+        <div id="atkC1" class="d-flex flex-wrap"></div>
+        <div class="mono mt-2" style="color:var(--muted);font-size:.8rem">decrypts to → P₁</div>
+        <div id="atkP1" class="mono" style="font-size:1.1rem;margin-top:4px">HELO</div>
+      </div>
+      <div class="col-md-6">
+        <div class="mono mb-1" style="color:var(--muted);font-size:.8rem">Target block C₂ <span style="color:var(--muted-2)">(attacker never touches it)</span></div>
+        <div class="mono mt-2" style="color:var(--muted);font-size:.8rem">decrypts to → P₂</div>
+        <div id="atkP2" class="mono" style="font-size:1.6rem;margin-top:4px;color:var(--plain)">role=user</div>
+        <div class="formula mt-3" style="font-size:.84rem">P₂ = D(K, C₂) ⊕ C₁</div>
+      </div>
+    </div>
+
+    <div class="sim-panel" id="atkPanel">
+      <div class="sim-head"><span class="step-pill" id="atkPill">1 / 6</span><span class="sim-title" id="atkTitle"></span></div>
+      <div class="sim-do" id="atkDo"></div>
+      <div class="sim-why" id="atkWhy"></div>
+    </div>
+    <div class="sim-controls">
+      <button class="btn btn-outline-light" id="atkBack">← Back</button>
+      <button class="btn btn-danger btn-lg btn-next" id="atkNext" style="--bs-btn-color:#fff">Next →</button>
+      <button class="btn btn-outline-light" id="atkRestart">↺ Restart</button>
+    </div>
+  </div>
+
+  <div class="card-soft pad mt-4" style="border-color:var(--cipher)">
+    <h3 style="color:var(--cipher)">The takeaway</h3>
+    <p class="mb-0" style="color:var(--text)">Encryption without authentication is broken by design. <b>Confidentiality</b> (keeping data secret) and <b>integrity</b> (stopping tampering) are two different jobs — and every mode here only does the first. The fix is <b>Authenticated Encryption</b> (like AES-GCM), which bolts a tamper-check onto the mode. That's the next lesson.</p>
+  </div>
+</div></section>
+
+<footer style="padding:48px 0 70px"><div class="wrap footer">
+  <div class="card-soft pad">
+    <h3 class="mb-2" style="color:var(--text)">Host this for your students (GitHub Pages)</h3>
+    <ol class="mb-0">
+      <li>Create a new public repo, e.g. <code>cipher-modes</code>.</li>
+      <li>Upload this file — keep the name <code>index.html</code>.</li>
+      <li>Go to <b>Settings → Pages</b>, set <b>Branch: main / root</b>, Save.</li>
+      <li>Your shareable link appears in a minute: <code>https://&lt;your-username&gt;.github.io/cipher-modes/</code></li>
+    </ol>
+    <hr style="border-color:var(--border)">
+    <p class="mb-0" style="color:var(--muted-2);font-size:.85rem">Everything runs in the browser — no build step, no backend. Edit the text or colours directly in the file.</p>
+  </div>
+</div></footer>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+/* =========================================================================
+   Block Cipher Modes — click-through simulator.  Plain, commented JS.
+   ========================================================================= */
+(function(){
+  "use strict";
+  const SVGNS="http://www.w3.org/2000/svg";
+  const REDUCED=window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const PULSE_MS=REDUCED?120:800;
+
+  const COLOR={plain:"#f5b942",cipher:"#32cfe6",iv:"#58d27a",counter:"#58d27a",keys:"#49d6b4",xor:"#b394ff",key:"#ff6ea0",enc:"#22314f"};
+  const INK={plain:"#2a1d00",cipher:"#042a33",iv:"#042814",counter:"#042814",keys:"#032a22"};
+
+  function el(n,a){const e=document.createElementNS(SVGNS,n);for(const k in a)e.setAttribute(k,a[k]);return e;}
+  function anchors(n){const hw=n.w/2,hh=n.h/2;return{t:{x:n.cx,y:n.cy-hh},b:{x:n.cx,y:n.cy+hh},l:{x:n.cx-hw,y:n.cy},r:{x:n.cx+hw,y:n.cy},c:{x:n.cx,y:n.cy}};}
+  function pathD(p){return p.map((q,i)=>(i?"L":"M")+q.x+" "+q.y).join(" ");}
+  function sizeOf(k){
+    if(k==="plain"||k==="cipher")return{w:112,h:46};
+    if(k==="iv"||k==="counter"||k==="keys")return{w:96,h:42};
+    if(k==="enc")return{w:92,h:54};
+    return{w:40,h:40};
+  }
+
+  /* ---------------- diagram engine (step-driven) ---------------- */
+  function Diagram(host,spec){
+    const dims=spec.viewBox; const W=dims[0], H=dims[1];
+    const svg=el("svg",{viewBox:"0 0 "+W+" "+H,class:"diagram"});
+    const defs=el("defs");
+    const mk=el("marker",{id:host.dataset.mk,markerWidth:9,markerHeight:9,refX:7,refY:4,orient:"auto",markerUnits:"userSpaceOnUse"});
+    mk.appendChild(el("path",{d:"M0 0 L8 4 L0 8 z",fill:"#5b6f96"})); defs.appendChild(mk); svg.appendChild(defs);
+    const edgeLayer=el("g"),nodeLayer=el("g"),pulseLayer=el("g"); svg.append(edgeLayer,nodeLayer,pulseLayer);
+
+    const nodeEl={},edgeEl={};
+    spec.nodes.forEach(n=>Object.assign(n,sizeOf(n.kind)));
+    spec.edges.forEach(e=>{const p=el("path",{d:pathD(e.pts),class:"edge","marker-end":"url(#"+host.dataset.mk+")"});edgeLayer.appendChild(p);edgeEl[e.id]=p;});
+    spec.nodes.forEach(n=>{
+      const g=el("g",{class:"node n-"+n.kind});
+      if(n.kind==="xor"){
+        g.appendChild(el("circle",{cx:n.cx,cy:n.cy,r:20,fill:"#2a2140",stroke:COLOR.xor,"stroke-width":2}));
+        const t=el("text",{x:n.cx,y:n.cy+6,"text-anchor":"middle","font-size":20,fill:COLOR.xor});t.textContent="⊕";g.appendChild(t);
+      }else if(n.kind==="enc"){
+        g.appendChild(el("rect",{x:n.cx-n.w/2,y:n.cy-n.h/2,width:n.w,height:n.h,rx:9,fill:COLOR.enc,stroke:COLOR.cipher,"stroke-width":2}));
+        const t=el("text",{x:n.cx,y:n.cy-2,"text-anchor":"middle","font-size":20,fill:"#dff6ff"});t.textContent="E";g.appendChild(t);
+        const k=el("text",{x:n.cx,y:n.cy+15,"text-anchor":"middle","font-size":10,fill:COLOR.key});k.textContent="🔑 key";g.appendChild(k);
+      }else{
+        g.appendChild(el("rect",{x:n.cx-n.w/2,y:n.cy-n.h/2,width:n.w,height:n.h,rx:9,fill:COLOR[n.kind]||"#888"}));
+        const ty=n.sub?n.cy+1:n.cy+5;
+        const t=el("text",{x:n.cx,y:ty,"text-anchor":"middle","font-size":15,fill:INK[n.kind]||"#07121f"});t.textContent=n.label;g.appendChild(t);
+        if(n.sub){const s=el("text",{x:n.cx,y:n.cy+15,"text-anchor":"middle","font-size":10,class:"sub",fill:INK[n.kind]||"#07121f"});s.textContent=n.sub;g.appendChild(s);}
+      }
+      nodeLayer.appendChild(g);nodeEl[n.id]=g;
+    });
+    (spec.annotations||[]).forEach(a=>{const t=el("text",{x:a.x,y:a.y,"text-anchor":"middle",class:"samebadge"});t.textContent=a.text;nodeLayer.appendChild(t);});
+    host.appendChild(svg);
+
+    function pulse(edge){
+      const path=edgeEl[edge.id];if(!path)return;
+      const len=path.getTotalLength(),color=COLOR[edge.dataType]||"#fff";
+      const dot=el("circle",{r:6,fill:color,class:"pulse"});dot.style.color=color;pulseLayer.appendChild(dot);path.classList.add("hot");
+      const start=performance.now();
+      (function frame(now){
+        let k=(now-start)/PULSE_MS;if(k>1)k=1;
+        const pt=path.getPointAtLength(k*len);dot.setAttribute("cx",pt.x);dot.setAttribute("cy",pt.y);
+        if(k<1)requestAnimationFrame(frame);else{dot.remove();path.classList.remove("hot");}
+      })(start);
+    }
+    function applyLit(upTo){
+      const set=new Set();
+      for(let i=0;i<=upTo;i++)(spec.steps[i].light||[]).forEach(id=>set.add(id));
+      const focus=new Set(spec.steps[upTo].focus||[]);
+      spec.nodes.forEach(n=>{
+        nodeEl[n.id].classList.toggle("lit",set.has(n.id));
+        nodeEl[n.id].classList.toggle("focus",focus.has(n.id));
+      });
+    }
+    const edgesOf=i=>(spec.steps[i].edges||[]).map(id=>spec.edges.find(e=>e.id===id)).filter(Boolean);
+
+    const ctrl={step:0,last:spec.steps.length-1,total:spec.steps.length};
+    function render(i,animate){
+      ctrl.step=i;applyLit(i);
+      if(animate&&i>0)edgesOf(i).forEach(pulse);
+      if(ctrl.onStep)ctrl.onStep(spec.steps[i],i,ctrl.total);
+    }
+    ctrl.next=function(){if(this.step>=this.last)return false;render(this.step+1,true);return true;};
+    ctrl.back=function(){if(this.step<=0)return false;render(this.step-1,true);return true;};
+    ctrl.reset=function(){render(0,false);};
+    ctrl.flashOnly=function(ids,edgeIds){applyLit(0);ids.forEach(id=>nodeEl[id]&&nodeEl[id].classList.add("lit"));edgeIds.forEach(eid=>{const e=spec.edges.find(x=>x.id===eid);if(e)pulse(e);});};
+    render(0,false);
+    return ctrl;
+  }
+
+  /* ================= mode specs (3 blocks each) ================= */
+  const C=[250,540,830];
+  const node=(id,kind,label,cx,cy,sub)=>({id,kind,label,cx,cy,sub});
+
+  function specECB(){
+    const nodes=[],edges=[];
+    const Pl=["AAAA","BBBB","AAAA"],Cl=["7f·3c","d1·0a","7f·3c"];
+    C.forEach((cx,i)=>{
+      nodes.push(node("P"+i,"plain",Pl[i],cx,55),node("E"+i,"enc","E",cx,195),node("C"+i,"cipher",Cl[i],cx,330));
+    });
+    const A=id=>anchors(nodes.find(n=>n.id===id));
+    C.forEach((cx,i)=>{edges.push({id:"P"+i+"e",dataType:"plain",pts:[A("P"+i).b,A("E"+i).t]},{id:"E"+i+"c",dataType:"cipher",pts:[A("E"+i).b,A("C"+i).t]});});
+    const steps=[
+      {light:["P0","P1","P2"],t:"Setup",do:"Three plaintext blocks go in. Notice block 1 and block 3 are the <b>same text</b> (AAAA).",why:"Watch what happens to identical inputs — that's the whole lesson of ECB."},
+      {light:["E0","E1","E2"],edges:["P0e","P1e","P2e"],t:"Encrypt each block",do:"Every block is encrypted <b>completely on its own</b> — there are no arrows between the columns.",why:"No block affects any other. Convenient… but dangerous, as the next step shows."},
+      {light:["C0","C1","C2"],focus:["C0","C2"],edges:["E0c","E1c","E2c"],t:"The leak",do:"Out come the ciphertext blocks. C₁ and C₃ are <b>identical</b> (7f·3c) because their input was identical.",why:"An attacker sees repeated patterns in your data without ever breaking AES. This is why you never use ECB for real messages."}
+    ];
+    return{viewBox:[1000,400],nodes,edges,steps,annotations:[{x:C[0],y:372,text:"identical ↓"},{x:C[2],y:372,text:"↓ identical"}]};
+  }
+
+  function specCBC(){
+    const nodes=[node("IV","iv","IV",80,150)],edges=[];
+    C.forEach((cx,i)=>nodes.push(node("P"+i,"plain","P"+(i+1),cx,55),node("X"+i,"xor","",cx,150),node("E"+i,"enc","E",cx,235),node("C"+i,"cipher","C"+(i+1),cx,330)));
+    const A=id=>anchors(nodes.find(n=>n.id===id));
+    C.forEach((cx,i)=>edges.push(
+      {id:"P"+i+"x",dataType:"plain",pts:[A("P"+i).b,A("X"+i).t]},
+      {id:"X"+i+"e",dataType:"plain",pts:[A("X"+i).b,A("E"+i).t]},
+      {id:"E"+i+"c",dataType:"cipher",pts:[A("E"+i).b,A("C"+i).t]}));
+    edges.push({id:"ivx",dataType:"iv",pts:[A("IV").r,A("X0").l]});
+    for(let i=1;i<3;i++){const f=A("C"+(i-1)).r,t=A("X"+i).l,m=(f.x+t.x)/2;edges.push({id:"fb"+i,dataType:"cipher",pts:[f,{x:m,y:f.y},{x:m,y:t.y},t]});}
+    const steps=[
+      {light:["IV","P0","P1","P2"],t:"Setup",do:"We have the public IV and all plaintext blocks P₁–P₃.",why:"The IV is what makes block 1 come out unpredictable."},
+      {light:["X0"],focus:["X0"],edges:["ivx","P0x"],t:"Mix block 1",do:"P₁ is <b>XORed with the IV</b>.",why:"Even if this text repeats later, the IV makes this block unique."},
+      {light:["E0"],focus:["E0"],edges:["X0e"],t:"Encrypt block 1",do:"The mixed result goes through AES with the key.",why:"This locks block 1."},
+      {light:["C0"],focus:["C0"],edges:["E0c"],t:"Create C₁",do:"Out comes the first ciphertext block, <b>C₁</b>.",why:"C₁ is now <b>required</b> to process the next block — remember that."},
+      {light:["X1"],focus:["X1"],edges:["fb1","P1x"],t:"Chain into block 2",do:"C₁ is fed forward and XORed with P₂.",why:"Block 2 <b>could not start</b> until C₁ existed. This dependency is the whole idea of the ‘chain’."},
+      {light:["E1"],focus:["E1"],edges:["X1e"],t:"Encrypt block 2",do:"Encrypt the mix…",why:"…locking block 2."},
+      {light:["C1"],focus:["C1"],edges:["E1c"],t:"Create C₂",do:"…giving <b>C₂</b>.",why:"Only now can block 3 begin — and not a moment before."},
+      {light:["X2"],focus:["X2"],edges:["fb2","P2x"],t:"Chain into block 3",do:"C₂ is XORed with P₃.",why:"Every block waits for the previous ciphertext."},
+      {light:["E2"],focus:["E2"],edges:["X2e"],t:"Encrypt block 3",do:"Encrypt…",why:"locking the last block."},
+      {light:["C2"],focus:["C2"],edges:["E2c"],t:"Done",do:"…producing <b>C₃</b>.",why:"Identical plaintext now encrypts differently (good!) — but because each block waited its turn, <b>encryption can't be parallelised</b>."}
+    ];
+    return{viewBox:[1000,400],nodes,edges,steps};
+  }
+
+  function specCFB(){
+    const nodes=[node("IV","iv","IV",80,55)],edges=[];
+    C.forEach((cx,i)=>nodes.push(node("E"+i,"enc","E",cx,140),node("P"+i,"plain","P"+(i+1),cx-125,255),node("X"+i,"xor","",cx,255),node("C"+i,"cipher","C"+(i+1),cx,350)));
+    const A=id=>anchors(nodes.find(n=>n.id===id));
+    C.forEach((cx,i)=>edges.push(
+      {id:"E"+i+"x",dataType:"keys",pts:[A("E"+i).b,A("X"+i).t]},
+      {id:"P"+i+"x",dataType:"plain",pts:[A("P"+i).r,A("X"+i).l]},
+      {id:"X"+i+"c",dataType:"cipher",pts:[A("X"+i).b,A("C"+i).t]}));
+    {const f=A("IV").r,t=A("E0").t;edges.push({id:"ive",dataType:"iv",pts:[f,{x:t.x,y:f.y},t]});}
+    for(let i=1;i<3;i++){const f=A("C"+(i-1)).r,t=A("E"+i).l,m=(f.x+t.x)/2;edges.push({id:"fb"+i,dataType:"cipher",pts:[f,{x:m,y:f.y},{x:m,y:t.y},t]});}
+    const steps=[
+      {light:["IV","P0","P1","P2"],t:"Setup",do:"The IV and plaintext are ready. CFB makes AES behave like a <b>stream cipher</b>.",why:"No padding needed — the message can be any length."},
+      {light:["E0"],focus:["E0"],edges:["ive"],t:"Make keystream 1",do:"Encrypt the <b>IV</b> to produce a keystream block.",why:"We'll hide the data by XORing with this — we never encrypt the plaintext directly."},
+      {light:["X0","C0"],focus:["C0"],edges:["E0x","P0x","X0c"],t:"Create C₁",do:"XOR that keystream with P₁ → <b>C₁</b>.",why:"Notice the thing AES encrypted was the IV, not P₁."},
+      {light:["E1"],focus:["E1"],edges:["fb1"],t:"Feed back",do:"<b>C₁</b> is fed back into AES to make the next keystream.",why:"So block 2 must wait for C₁ — encryption is sequential, just like CBC."},
+      {light:["X1","C1"],focus:["C1"],edges:["E1x","P1x","X1c"],t:"Create C₂",do:"XOR with P₂ → <b>C₂</b>.",why:""},
+      {light:["E2"],focus:["E2"],edges:["fb2"],t:"Feed back again",do:"C₂ feeds the next keystream…",why:"block 3 waits in turn."},
+      {light:["X2","C2"],focus:["C2"],edges:["E2x","P2x","X2c"],t:"Done",do:"…XOR with P₃ → <b>C₃</b>.",why:"A transmission error spreads into the next block, then the mode re-synchronises on its own."}
+    ];
+    return{viewBox:[1000,420],nodes,edges,steps};
+  }
+
+  function specOFB(){
+    const nodes=[node("IV","iv","IV",80,55)],edges=[];
+    C.forEach((cx,i)=>nodes.push(node("E"+i,"enc","E",cx,120),node("O"+i,"keys","O"+(i+1),cx,205),node("P"+i,"plain","P"+(i+1),cx-125,285),node("X"+i,"xor","",cx,285),node("C"+i,"cipher","C"+(i+1),cx,365)));
+    const A=id=>anchors(nodes.find(n=>n.id===id));
+    C.forEach((cx,i)=>edges.push(
+      {id:"E"+i+"o",dataType:"keys",pts:[A("E"+i).b,A("O"+i).t]},
+      {id:"O"+i+"x",dataType:"keys",pts:[A("O"+i).b,A("X"+i).t]},
+      {id:"P"+i+"x",dataType:"plain",pts:[A("P"+i).r,A("X"+i).l]},
+      {id:"X"+i+"c",dataType:"cipher",pts:[A("X"+i).b,A("C"+i).t]}));
+    {const f=A("IV").r,t=A("E0").t;edges.push({id:"ive",dataType:"iv",pts:[f,{x:t.x,y:f.y},t]});}
+    for(let i=0;i<2;i++){const f=A("O"+i).r,t=A("E"+(i+1)).l,m=(f.x+t.x)/2;edges.push({id:"chain"+i,dataType:"keys",pts:[f,{x:m,y:f.y},{x:m,y:t.y},t]});}
+    const steps=[
+      {light:["IV","P0","P1","P2"],t:"Setup",do:"CFB and OFB look similar — but OFB's keystream <b>ignores your data entirely</b>.",why:"That means the whole keystream can be computed in advance."},
+      {light:["E0","O0"],focus:["O0"],edges:["ive","E0o"],t:"Keystream O₁",do:"Encrypt the IV → keystream <b>O₁</b>.",why:""},
+      {light:["E1","O1"],focus:["O1"],edges:["chain0","E1o"],t:"Keystream O₂",do:"Encrypt O₁ → <b>O₂</b>.",why:"See? The plaintext appears nowhere in this chain."},
+      {light:["E2","O2"],focus:["O2"],edges:["chain1","E2o"],t:"Keystream O₃",do:"Encrypt O₂ → <b>O₃</b>.",why:"The entire keystream is ready <b>before any data is touched</b> — you could pre-compute it on an idle server."},
+      {light:["X0","C0"],focus:["C0"],edges:["O0x","P0x","X0c"],t:"Create C₁",do:"Now simply XOR: P₁ ⊕ O₁ → <b>C₁</b>.",why:""},
+      {light:["X1","C1"],focus:["C1"],edges:["O1x","P1x","X1c"],t:"Create C₂",do:"P₂ ⊕ O₂ → <b>C₂</b>.",why:""},
+      {light:["X2","C2"],focus:["C2"],edges:["O2x","P2x","X2c"],t:"Done",do:"P₃ ⊕ O₃ → <b>C₃</b>.",why:"One flipped ciphertext bit flips exactly <b>one</b> plaintext bit — ideal for noisy links like satellite or voice."}
+    ];
+    return{viewBox:[1000,430],nodes,edges,steps};
+  }
+
+  function specCTR(){
+    const nodes=[],edges=[];
+    C.forEach((cx,i)=>nodes.push(node("T"+i,"counter","ctr",cx,50,"nonce∥"+(i+1)),node("E"+i,"enc","E",cx,140),node("P"+i,"plain","P"+(i+1),cx-125,250),node("X"+i,"xor","",cx,250),node("C"+i,"cipher","C"+(i+1),cx,345)));
+    const A=id=>anchors(nodes.find(n=>n.id===id));
+    C.forEach((cx,i)=>edges.push(
+      {id:"T"+i+"e",dataType:"iv",pts:[A("T"+i).b,A("E"+i).t]},
+      {id:"E"+i+"x",dataType:"keys",pts:[A("E"+i).b,A("X"+i).t]},
+      {id:"P"+i+"x",dataType:"plain",pts:[A("P"+i).r,A("X"+i).l]},
+      {id:"X"+i+"c",dataType:"cipher",pts:[A("X"+i).b,A("C"+i).t]}));
+    const all=[0,1,2];
+    const steps=[
+      {light:["T0","T1","T2","P0","P1","P2"],t:"Setup",do:"CTR encrypts a simple <b>counter</b> instead of your data. Every block is independent.",why:"That independence is the whole advantage."},
+      {light:all.map(i=>"E"+i),focus:all.map(i=>"E"+i),edges:all.map(i=>"T"+i+"e"),t:"Encrypt counters",do:"All three counters go through AES <b>at the same time</b>.",why:"No block waits for another — fully parallel."},
+      {light:all.map(i=>"X"+i),edges:all.reduce((a,i)=>a.concat(["E"+i+"x","P"+i+"x"]),[]),t:"XOR with plaintext",do:"Each keystream block is XORed with its plaintext — all at once.",why:""},
+      {light:all.map(i=>"C"+i),focus:all.map(i=>"C"+i),edges:all.map(i=>"X"+i+"c"),t:"Done",do:"C₁, C₂, C₃ are all produced together.",why:"No padding, decryption is the same operation, and you can <b>jump straight to block 5000</b> without touching the rest. This is the modern default."}
+    ];
+    return{viewBox:[1000,400],nodes,edges,steps};
+  }
+
+  /* ================= build each simulator pane ================= */
+  const MODES=[
+    {key:"ecb",name:"ECB — Electronic Codebook",spec:specECB,formula:"Cᵢ = E(K, Pᵢ)",tag:"Each block locked independently.",
+     notice:[["Never use it for real data.","Identical plaintext → identical ciphertext (see the picture at the top)."],["Its only upside is parallelism,","which every good mode below also has — without the leak."],["If you spot <span class='mono'>MODE_ECB</span> in code,","treat it as a bug."]]},
+    {key:"cbc",name:"CBC — Cipher Block Chaining",spec:specCBC,formula:"Cᵢ = E(K, Pᵢ ⊕ Cᵢ₋₁)   ·   C₀ = IV",tag:"Each block is tangled with the one before it.",
+     notice:[["Encryption is strictly sequential,","because block i needs block i−1 first. (Decryption can parallelise.)"],["Needs padding,","which opens the door to padding-oracle attacks."],["A damaged block","corrupts itself and flips bits in the next, then recovers."]]},
+    {key:"cfb",name:"CFB — Cipher Feedback",spec:specCFB,formula:"Cᵢ = Pᵢ ⊕ E(K, Cᵢ₋₁)",tag:"A stream cipher built from AES.",
+     notice:[["No padding,","because it's a stream — handy for data that isn't block-aligned."],["Still sequential to encrypt,","since each keystream block needs the previous ciphertext."],["An error spreads into the next block,","then the mode re-synchronises on its own."]]},
+    {key:"ofb",name:"OFB — Output Feedback",spec:specOFB,formula:"Oᵢ = E(K, Oᵢ₋₁) ·  Cᵢ = Pᵢ ⊕ Oᵢ",tag:"Keystream that ignores your data.",
+     notice:[["The keystream can be pre-computed,","because it never depends on the plaintext."],["Zero error propagation —","one flipped bit in, one flipped bit out. Good for noisy channels."],["The trap:","the keystream can fall into a short repeating cycle, and it gives no integrity. Modern designs use CTR instead."]]},
+    {key:"ctr",name:"CTR — Counter mode",spec:specCTR,formula:"Cᵢ = Pᵢ ⊕ E(K, nonce ∥ counterᵢ)",tag:"The one modern systems actually use.",
+     notice:[["Fully parallel both ways,","and no padding needed."],["Random access:","to read block 5000 you encrypt counter 5000 and touch nothing else — why disk &amp; database encryption love it."],["One absolute rule:","the nonce∥counter pair must never repeat under one key, or two messages share a keystream."]]}
+  ];
+
+  const controllers={};
+  MODES.forEach(m=>{
+    const pane=document.getElementById("p-"+m.key), diagId="dg-"+m.key;
+    const extra=(m.key==="ctr")?'<button class="btn btn-outline-info" data-act="rand">⤻ Jump to block 3</button>':"";
+    pane.innerHTML=
+      '<div class="card-soft pad">'
+      +'<div class="d-flex justify-content-between flex-wrap align-items-baseline mb-1">'
+        +'<h3 class="mb-0">'+m.name+'</h3>'
+        +'<span class="mono" style="color:var(--muted);font-size:.85rem">'+m.tag+'</span>'
+      +'</div>'
+      +'<div class="diagram-scroll mt-2"><div id="'+diagId+'" data-mk="mk-'+m.key+'"></div></div>'
+      +'<div class="sim-panel">'
+        +'<div class="sim-head"><span class="step-pill" data-el="pill">1 / 1</span><span class="sim-title" data-el="title"></span></div>'
+        +'<div class="sim-do" data-el="do"></div>'
+        +'<div class="sim-why" data-el="why"></div>'
+      +'</div>'
+      +'<div class="sim-controls">'
+        +'<button class="btn btn-outline-light" data-act="back">← Back</button>'
+        +'<button class="btn btn-info btn-lg btn-next" data-act="next">Next →</button>'
+        +'<button class="btn btn-outline-light" data-act="restart">↺ Restart</button>'
+        +extra
+        +'<span class="done-note" data-el="done" style="display:none">✓ Encryption complete — press Restart to replay.</span>'
+      +'</div>'
+      +'<div class="row g-3 mt-2">'
+        +'<div class="col-lg-5"><div class="mono mb-1" style="color:var(--muted);font-size:.8rem">the rule</div><div class="formula">'+m.formula+'</div></div>'
+        +'<div class="col-lg-7"><div class="mono mb-1" style="color:var(--muted);font-size:.8rem">cheat sheet</div>'
+          +'<ul class="notice mb-0" style="color:var(--muted)">'+m.notice.map(n=>"<li><b>"+n[0]+"</b> "+n[1]+"</li>").join("")+'</ul></div>'
+      +'</div>'
+      +'</div>';
+    const host=document.getElementById(diagId);
+    const ctrl=Diagram(host,m.spec());
+    controllers[m.key]=ctrl;
+    const q=s=>pane.querySelector('[data-el="'+s+'"]');
+    const nextBtn=pane.querySelector('[data-act="next"]'), backBtn=pane.querySelector('[data-act="back"]');
+    ctrl.onStep=(step,i,total)=>{
+      q("pill").textContent=(i+1)+" / "+total;
+      q("title").textContent=step.t||"";
+      q("do").innerHTML=step.do||"";
+      if(step.why){q("why").style.display="block";q("why").innerHTML="<b>Impact:</b> "+step.why;}else{q("why").style.display="none";}
+      backBtn.disabled=(i===0);
+      nextBtn.disabled=(i>=total-1);
+      q("done").style.display=(i>=total-1)?"inline":"none";
+    };
+
+    pane.addEventListener("click",ev=>{
+      const a=ev.target.closest("[data-act]"); if(!a)return;
+      const act=a.dataset.act;
+      if(act==="next")ctrl.next();
+      else if(act==="back")ctrl.back();
+      else if(act==="restart")ctrl.reset();
+      else if(act==="rand"){ctrl.flashOnly(["T2","P2","E2","X2","C2"],["T2e","E2x","P2x","X2c"]);q("title").textContent="Random access";q("do").innerHTML="Block 3 is produced <b>on its own</b> — the other blocks are never computed.";q("why").style.display="block";q("why").innerHTML="<b>Impact:</b> this is why CTR is used for disk and database encryption — read any block instantly.";}
+    });
+  });
+  // show step 1 in every pane now that onStep handlers are attached
+  Object.values(controllers).forEach(c=>c.reset());
+
+  // switching tabs resets that mode to step 1 (manual — no auto-play)
+  document.querySelectorAll('#modeTabs button').forEach(btn=>{
+    btn.addEventListener('shown.bs.tab',e=>{controllers[e.target.dataset.bsTarget.replace("#p-","")].reset();});
+  });
+
+  // keyboard: arrows drive the currently visible mode
+  document.addEventListener("keydown",e=>{
+    if(/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName))return;
+    const activePane=document.querySelector("#modes .tab-pane.active");
+    if(!activePane)return;
+    const c=controllers[activePane.id.replace("p-","")];if(!c)return;
+    if(e.key==="ArrowRight")c.next();
+    else if(e.key==="ArrowLeft")c.back();
+  });
+
+  /* ================= hero ECB image demo ================= */
+  (function heroDemo(){
+    const BS=120,BLK=10,N=BS/BLK;
+    const src=document.getElementById("ecbSrc"),bad=document.getElementById("ecbBad"),good=document.getElementById("ecbGood");
+    const s=src.getContext("2d");s.imageSmoothingEnabled=false;
+    s.fillStyle="#0e1626";s.fillRect(0,0,BS,BS);
+    s.fillStyle="#7fd6ff";s.beginPath();s.arc(60,60,46,0,7);s.fill();
+    s.fillStyle="#0e1626";s.fillRect(42,46,10,16);s.fillRect(68,46,10,16);s.fillRect(40,80,40,8);
+    const img=s.getImageData(0,0,BS,BS).data;
+    function key(bx,by){let sum=0;for(let y=0;y<BLK;y++)for(let x=0;x<BLK;x++){const i=((by*BLK+y)*BS+(bx*BLK+x))*4;sum+=img[i]+img[i+1]+img[i+2];}return Math.round(sum/(BLK*BLK*3)/24);}
+    function col(k){return"hsl("+((k*67)%360)+" 70% 55%)";}
+    let seed=1337;const rnd=()=>{seed=(seed*1103515245+12345)&0x7fffffff;return seed/0x7fffffff;};
+    const b=bad.getContext("2d"),g=good.getContext("2d");
+    for(let by=0;by<N;by++)for(let bx=0;bx<N;bx++){
+      b.fillStyle=col(key(bx,by));b.fillRect(bx*BLK,by*BLK,BLK,BLK);
+      g.fillStyle="hsl("+Math.floor(rnd()*360)+" 60% "+(35+rnd()*35)+"%)";g.fillRect(bx*BLK,by*BLK,BLK,BLK);
+    }
+  })();
+
+  /* ================= 128-bit strip flash ================= */
+  (function(){
+    if(REDUCED)return;
+    const blocks=[].slice.call(document.querySelectorAll("#msgStrip .blk")),strip=document.getElementById("msgStrip");
+    let started=false;
+    new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting&&!started){started=true;blocks.forEach((bl,i)=>setTimeout(()=>{bl.classList.add("flash");setTimeout(()=>bl.classList.remove("flash"),500);},i*450));}}),{threshold:.5}).observe(strip);
+  })();
+
+  /* ================= XOR demo ================= */
+  (function(){
+    const A=[1,0,1,1,0,0,1,0],B=[0,0,1,0,1,0,1,1];
+    const ra=document.getElementById("xorA"),rb=document.getElementById("xorB"),ro=document.getElementById("xorOut");
+    function render(){ro.innerHTML="";for(let i=0;i<8;i++){const o=A[i]^B[i];const d=document.createElement("div");d.className="bit out"+(o?" on":"");d.textContent=o;ro.appendChild(d);}}
+    function row(arr,rowEl){rowEl.innerHTML="";arr.forEach((v,i)=>{const d=document.createElement("div");d.className="bit"+(v?" on":"");d.textContent=v;d.onclick=()=>{arr[i]^=1;d.classList.toggle("on");d.textContent=arr[i];render();};rowEl.appendChild(d);});}
+    row(A,ra);row(B,rb);render();
+  })();
+
+  /* ================= error propagation ================= */
+  (function(){
+    const grid=document.getElementById("errGrid"),note=document.getElementById("errNote"),btns=document.getElementById("errBtns");
+    const modes={
+      ECB:{s:["ok","garbage","ok","ok"],t:"ECB: blocks are independent, so only P₂ is lost. Damage = 1 block."},
+      CBC:{s:["ok","garbage","bitflip","ok"],t:"CBC: P₂ becomes garbage, and the matching bit of P₃ flips. Damage = 2 blocks — then it recovers."},
+      CFB:{s:["ok","bitflip","garbage","ok"],t:"CFB: the bad bit flips directly in P₂, and because C₂ feeds the next keystream, P₃ turns to garbage. Damage = 2 blocks."},
+      OFB:{s:["ok","bitflip","ok","ok"],t:"OFB: the keystream is independent, so exactly one bit of P₂ flips. Damage = 1 bit."},
+      CTR:{s:["ok","bitflip","ok","ok"],t:"CTR: same as OFB — one bit in, one bit out. Damage = 1 bit."}
+    };
+    Object.keys(modes).forEach((k,i)=>{const b=document.createElement("button");b.className="btn btn-sm "+(i===1?"btn-info":"btn-outline-light");b.style.fontFamily="JetBrains Mono,monospace";b.textContent=k;
+      b.onclick=()=>{[].slice.call(btns.children).forEach(x=>{x.className="btn btn-sm btn-outline-light";x.style.fontFamily="JetBrains Mono,monospace";});b.className="btn btn-sm btn-info";render(k);};btns.appendChild(b);});
+    function render(k){const m=modes[k];grid.innerHTML="";for(let i=0;i<4;i++){const st=m.s[i];const c=document.createElement("div");c.className="pcell"+(st==="garbage"?" garbage":st==="bitflip"?" bitflip":"");const v=st==="garbage"?"▓?▞▚":st==="bitflip"?"·bit·":"ok";c.innerHTML='<div class="lbl">P'+(i+1)+'</div><div class="val">'+v+'</div>';grid.appendChild(c);}note.textContent=m.t;}
+    render("CBC");
+  })();
+
+  /* ================= compare spotlight ================= */
+  (function(){
+    const btn=document.getElementById("spotBtn"),msg=document.getElementById("spotMsg");
+    btn.onclick=()=>{document.querySelectorAll("#cmpTable .integrity-col").forEach(c=>c.classList.toggle("spot"));const on=document.querySelector("#cmpTable .integrity-col").classList.contains("spot");msg.style.display=on?"block":"none";btn.textContent=on?"Hide":"Why does the last column matter?";};
+  })();
+
+  /* ================= CBC bit-flip attack (step simulator) ================= */
+  (function(){
+    const USER=[0x75,0x73,0x65,0x72],ROOT=[0x72,0x6f,0x6f,0x74];
+    const DELTA=USER.map((u,i)=>u^ROOT[i]);
+    const C1=[0x3a,0x91,0xc7,0x05], C1F=C1.map((b,i)=>b^DELTA[i]);
+    const box=document.getElementById("atkC1"),p1=document.getElementById("atkP1"),p2=document.getElementById("atkP2");
+    const pill=document.getElementById("atkPill"),title=document.getElementById("atkTitle"),doEl=document.getElementById("atkDo"),whyEl=document.getElementById("atkWhy");
+    const nextB=document.getElementById("atkNext"),backB=document.getElementById("atkBack"),resetB=document.getElementById("atkRestart");
+    const hx=n=>n.toString(16).padStart(2,"0");
+    function drawC1(arr,mode){box.innerHTML="";arr.forEach((b,i)=>{const w=document.createElement("div");w.className="byte";const cls=mode==="changed"?"changed":mode==="target"?"target":"";w.innerHTML='<div class="b '+cls+'">'+hx(b)+'</div><div class="c">byte '+(i+1)+'</div>';box.appendChild(w);});}
+
+    const steps=[
+      {t:"Setup",do:"An encrypted session cookie. Block 2 decrypts to <b>role=user</b>. The attacker sees only the ciphertext — never the key.",why:"They can't read it. But can they <b>change</b> it?",
+       apply:()=>{drawC1(C1,"");p1.textContent="HELO";p1.style.color="#cfe";p2.textContent="role=user";p2.style.color="var(--plain)";}},
+      {t:"Find the target bytes",do:"The attacker works out which 4 bytes of <b>C₁</b> line up with the word “user” in P₂.",why:"In CBC, <b>P₂ = D(K, C₂) ⊕ C₁</b> — so changing C₁ directly changes P₂.",
+       apply:()=>{drawC1(C1,"target");p1.textContent="HELO";p1.style.color="#cfe";p2.textContent="role=user";p2.style.color="var(--plain)";}},
+      {t:"Flip the bits",do:"They XOR those bytes with (user ⊕ root). <b>C₁'s bytes change</b> to new values — shown in red.",why:"No key was used. Just plain XOR on public ciphertext.",
+       apply:()=>{drawC1(C1F,"changed");p1.textContent="HELO";p1.style.color="#cfe";p2.textContent="role=user";p2.style.color="var(--plain)";}},
+      {t:"Collateral damage: P₁",do:"On decryption, because C₁ changed, <b>P₁ now comes out as garbage</b>.",why:"The attacker sacrificed block 1 — usually they don't care what it held.",
+       apply:()=>{drawC1(C1F,"changed");p1.textContent="▓?▞▚ (garbage)";p1.style.color="var(--danger)";p2.textContent="role=user";p2.style.color="var(--plain)";}},
+      {t:"The payoff: P₂",do:"But P₂ flipped from <b>user</b> to exactly <b>root</b> — the change the attacker chose.",why:"Confidentiality held (they never read it) — <b>integrity did not</b>.",
+       apply:()=>{drawC1(C1F,"changed");p1.textContent="▓?▞▚ (garbage)";p1.style.color="var(--danger)";p2.textContent="role=root";p2.style.color="var(--iv)";}},
+      {t:"Why this matters",do:"Encryption without authentication is <b>broken by design</b>.",why:"The fix is authenticated encryption (AES-GCM), which adds a tamper-check. That's the next lesson. 👇",
+       apply:()=>{drawC1(C1F,"changed");p1.textContent="▓?▞▚ (garbage)";p1.style.color="var(--danger)";p2.textContent="role=root";p2.style.color="var(--iv)";}}
+    ];
+    let i=0;
+    function render(){
+      const st=steps[i];st.apply();
+      pill.textContent=(i+1)+" / "+steps.length;title.textContent=st.t;doEl.innerHTML=st.do;
+      whyEl.innerHTML="<b>Impact:</b> "+st.why;
+      backB.disabled=(i===0);nextB.disabled=(i>=steps.length-1);
+    }
+    nextB.onclick=()=>{if(i<steps.length-1){i++;render();}};
+    backB.onclick=()=>{if(i>0){i--;render();}};
+    resetB.onclick=()=>{i=0;render();};
+    render();
+  })();
+
+})();
+</script>
+</body>
+</html>
