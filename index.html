@@ -425,30 +425,30 @@
   <p class="lead" style="max-width:64ch">Here's the proof that “secret” isn't “safe”. In CBC, each plaintext block is XORed with the <i>previous ciphertext block</i> on the way out. So flipping a bit in <span class="mono" style="color:var(--cipher-d)">C₁</span> flips the matching bit in <span class="mono" style="color:var(--plain-d)">P₂</span> — a precise, chosen edit. The attacker can't <i>read</i> the data, but they can <i>rewrite</i> it.</p>
 
   <div class="card-soft pad mt-3">
-    <p class="mb-2" style="color:var(--muted)">A session cookie is encrypted. Block 2 says <span class="mono" style="color:var(--plain-d)">role=user</span>. The attacker wants <span class="mono" style="color:var(--iv-d)">role=root</span> and never sees the key.</p>
+    <p class="mb-2" style="color:var(--muted)">A session cookie is encrypted. After decryption, block 2 should read <span class="mono" style="color:var(--plain-d)">role=user</span>. The attacker wants <span class="mono" style="color:var(--iv-d)">role=root</span> — and never sees the key. Press <b>Play</b> to decrypt normally first, then watch the attack.</p>
 
-    <div class="row g-4 mt-1">
-      <div class="col-md-6">
-        <div class="mono mb-1" style="color:var(--muted);font-size:.8rem">Ciphertext block C₁ (sent in the clear)</div>
-        <div id="atkC1" class="d-flex flex-wrap"></div>
-        <div class="mono mt-2" style="color:var(--muted);font-size:.8rem">decrypts to → P₁</div>
-        <div id="atkP1" class="mono" style="font-size:1.1rem;margin-top:4px">HELO</div>
-      </div>
-      <div class="col-md-6">
-        <div class="mono mb-1" style="color:var(--muted);font-size:.8rem">Target block C₂</div>
-        <div class="mono" style="font-size:.9rem;color:var(--muted-2)">(unchanged — attacker never touches it)</div>
-        <div class="mono mt-2" style="color:var(--muted);font-size:.8rem">decrypts to → P₂</div>
-        <div id="atkP2" class="mono" style="font-size:1.6rem;margin-top:4px;color:var(--plain-d)">role=user</div>
-      </div>
-    </div>
-
-    <div class="formula mt-3">P₂ = D(K, C₂) ⊕ C₁   &nbsp;→&nbsp; change C₁ by Δ, and P₂ changes by the same Δ</div>
-
+    <div class="diagram-scroll mt-2"><div id="atkDiagram" data-mk="mk-atk"></div></div>
+    <div class="narration" id="atkNote"></div>
     <div class="controls">
-      <button class="btn btn-danger fw-semibold" id="atkGo">Inject: flip “user” → “root”</button>
-      <button class="btn btn-outline-secondary" id="atkReset">Reset</button>
+      <button class="btn btn-info btn-sm fw-semibold" style="--bs-btn-color:#04262e" data-act="play">▶ Play the whole story</button>
+      <button class="btn btn-outline-secondary btn-sm" data-act="step">⏭ Step</button>
+      <button class="btn btn-danger btn-sm fw-semibold" data-act="inject">⚡ Skip to the injection</button>
+      <button class="btn btn-outline-secondary btn-sm" data-act="reset">↺ Reset</button>
+      <span class="speed">speed <input type="range" min="0.5" max="2" step="0.5" value="1" data-act="speed"></span>
     </div>
-    <div class="narration mt-3" id="atkNote">Press inject. Watch C₁ turn to garbage, P₂ change to exactly what the attacker wanted — and no key anywhere in sight.</div>
+
+    <div class="row g-3 mt-3">
+      <div class="col-lg-6">
+        <div class="mono mb-1" style="color:var(--muted);font-size:.8rem">the two decryptions</div>
+        <div class="formula">P₁ = D(K, C₁) ⊕ IV<br>P₂ = D(K, C₂) ⊕ C₁</div>
+        <p class="mt-2 mb-0" style="color:var(--muted);font-size:.9rem"><span style="color:var(--cipher-d);font-weight:700">C₁ appears in both lines.</span> That's the answer to “where is P₁?” — editing C₁ wrecks P₁ (top line) <i>and</i> rewrites P₂ (bottom line).</p>
+      </div>
+      <div class="col-lg-6">
+        <div class="mono mb-1" style="color:var(--muted);font-size:.8rem">C₁ bytes travelling on the wire</div>
+        <div id="atkC1" class="d-flex flex-wrap"></div>
+        <p class="mt-2 mb-0" style="color:var(--muted-2);font-size:.82rem">Δ = “user” ⊕ “root” is what the attacker XORs into these bytes.</p>
+      </div>
+    </div>
   </div>
 
   <div class="card-soft pad mt-4" style="border-color:var(--cipher-d)">
@@ -527,8 +527,8 @@
     const edgeLayer = el("g"); const nodeLayer = el("g"); const pulseLayer = el("g");
     svg.append(edgeLayer, nodeLayer, pulseLayer);
 
-    const nodeById = {}; const nodeEl = {}; const edgeEl = {};
-    spec.nodes.forEach(n=>{ Object.assign(n, sizeOf(n.kind)); nodeById[n.id]=n; });
+    const nodeById = {}; const nodeEl = {}; const edgeEl = {}; const textEl = {}; const rectEl = {};
+    spec.nodes.forEach(n=>{ const s=sizeOf(n.kind); n.w=n.w||s.w; n.h=n.h||s.h; nodeById[n.id]=n; });
 
     spec.edges.forEach(e=>{
       const p = el("path",{d:pathD(e.pts), class:"edge",
@@ -544,14 +544,15 @@
       } else if(n.kind==="enc"){
         g.appendChild(el("rect",{x:n.cx-n.w/2,y:n.cy-n.h/2,width:n.w,height:n.h,rx:9,
           fill:COLOR.enc,stroke:COLOR.cipher,"stroke-width":2}));
-        const t=el("text",{x:n.cx,y:n.cy-2,"text-anchor":"middle","font-size":20,fill:"#dff6ff"}); t.textContent="E"; g.appendChild(t);
+        const t=el("text",{x:n.cx,y:n.cy-2,"text-anchor":"middle","font-size":20,fill:"#dff6ff"}); t.textContent=(n.label||"E"); g.appendChild(t);
         const k=el("text",{x:n.cx,y:n.cy+15,"text-anchor":"middle","font-size":10,fill:"#ffb3cd"}); k.textContent="🔑 key"; g.appendChild(k);
       } else {
         const fill = COLOR[n.kind] || "#888";
-        g.appendChild(el("rect",{x:n.cx-n.w/2,y:n.cy-n.h/2,width:n.w,height:n.h,rx:9,fill:fill}));
+        const rect = el("rect",{x:n.cx-n.w/2,y:n.cy-n.h/2,width:n.w,height:n.h,rx:9,fill:fill});
+        g.appendChild(rect); rectEl[n.id]=rect;
         const ty = n.sub ? n.cy+1 : n.cy+5;
-        const t=el("text",{x:n.cx,y:ty,"text-anchor":"middle","font-size":15,fill:INK[n.kind]||"#07121f"});
-        t.textContent=n.label; g.appendChild(t);
+        const t=el("text",{x:n.cx,y:ty,"text-anchor":"middle","font-size":(n.fs||15),fill:INK[n.kind]||"#07121f"});
+        t.textContent=n.label; g.appendChild(t); textEl[n.id]=t;
         if(n.sub){
           const s=el("text",{x:n.cx,y:n.cy+15,"text-anchor":"middle","font-size":10,class:"sub",fill:INK[n.kind]||"#07121f"});
           s.textContent=n.sub; g.appendChild(s);
@@ -566,10 +567,10 @@
 
     host.appendChild(svg);
 
-    function pulse(edge){
+    function pulse(edge, hot){
       const path = edgeEl[edge.id]; if(!path) return Promise.resolve();
       const len = path.getTotalLength();
-      const color = COLOR[edge.dataType] || "#555";
+      const color = hot ? "#dc2f45" : (COLOR[edge.dataType] || "#555");
       const dot = el("circle",{r:6, fill:color, class:"pulse"}); dot.style.color=color;
       pulseLayer.appendChild(dot);
       path.classList.add("hot");
@@ -594,15 +595,31 @@
 
     const edgesOf = i => (spec.steps[i].edges||[]).map(id=> spec.edges.find(e=>e.id===id)).filter(Boolean);
 
+    // dynamic label / colour changes driven by step.do (cumulative, last wins)
+    const TINT = { danger:{fill:"#f1b6bc",ink:"#8a1420"}, root:{fill:COLOR.iv,ink:INK.iv} };
+    function applyDo(upTo){
+      spec.nodes.forEach(n=>{                                   // reset to defaults first
+        if(textEl[n.id]) textEl[n.id].textContent=n.label;
+        if(rectEl[n.id]){ rectEl[n.id].setAttribute("fill",COLOR[n.kind]||"#888");
+          if(textEl[n.id]) textEl[n.id].setAttribute("fill",INK[n.kind]||"#07121f"); }
+      });
+      for(let i=0;i<=upTo;i++) (spec.steps[i].do||[]).forEach(d=>{
+        if(d.label!=null && textEl[d.id]) textEl[d.id].textContent=d.label;
+        if(d.tint && rectEl[d.id]){ const T=TINT[d.tint]; rectEl[d.id].setAttribute("fill",T.fill);
+          if(textEl[d.id]) textEl[d.id].setAttribute("fill",T.ink); }
+      });
+    }
+
     const ctrl = {
       step:0, playing:false, timer:null, speed:1, lastStep:spec.steps.length-1,
       caption(){ return spec.steps[this.step].caption || ""; }
     };
 
     function render(i, animate){
-      ctrl.step=i; applyLit(i);
+      ctrl.step=i; applyLit(i); applyDo(i);
       if(ctrl.onCaption) ctrl.onCaption(ctrl.caption());
-      if(animate && i>0){ edgesOf(i).forEach(pulse); }
+      if(animate && i>0){ const hot=!!spec.steps[i].hot; edgesOf(i).forEach(e=>pulse(e,hot)); }
+      if(ctrl.onStep) ctrl.onStep(i);
       if(ctrl.onState) ctrl.onState();
     }
 
@@ -624,6 +641,7 @@
     };
     ctrl.pause = function(){ this.playing=false; clearTimeout(this.timer); if(this.onState)this.onState(); };
     ctrl.stepOnce = function(){ this.pause(); this.next(); };
+    ctrl.jump = function(i){ this.pause(); render(i,false); };
     ctrl.flashOnly = function(ids, edgeIds){
       this.pause(); applyLit(0);
       ids.forEach(id=> nodeEl[id] && nodeEl[id].classList.add("lit"));
@@ -1016,44 +1034,94 @@
     };
   })();
 
-  /* ---- CBC BIT-FLIPPING ATTACK (real XOR, no key) ---- */
+  /* ---- CBC BIT-FLIPPING ATTACK — animated decryption of two blocks ---- */
   (function attack(){
+    /* --- build the decryption diagram spec --- */
+    const c1=270, c2=680;
+    const N=(id,kind,label,cx,cy,extra)=>Object.assign({id,kind,label,cx,cy},extra||{});
+    const nodes=[
+      N("C1","cipher","C₁",c1,55),
+      N("C2","cipher","C₂",c2,55),
+      N("D1","enc","D",c1,150),
+      N("D2","enc","D",c2,150),
+      N("IV","iv","IV",110,255),
+      N("X1","xor","",c1,255),
+      N("X2","xor","",c2,255),
+      N("P1","plain","·",c1,370),
+      N("P2","plain","·",c2,370,{w:176,fs:14})
+    ];
+    const A=id=>{ const n=nodes.find(x=>x.id===id); const hw=(n.w||112)/2, hh=(n.h||46)/2;
+      return {t:{x:n.cx,y:n.cy-hh},b:{x:n.cx,y:n.cy+hh},l:{x:n.cx-hw,y:n.cy},r:{x:n.cx+hw,y:n.cy}}; };
+    // (widths needed for anchors before engine assigns them)
+    nodes.forEach(n=>{ if(!n.w) n.w = (n.kind==="iv"?96:n.kind==="enc"?92:n.kind==="xor"?40:112); if(!n.h) n.h=(n.kind==="enc"?54:n.kind==="xor"?40:n.kind==="iv"?42:46); });
+    const midF=(c1+56+ (c2-20))/2; // bend x for the C1->X2 feedback
+    const edges=[
+      {id:"c1d1",dataType:"cipher",pts:[A("C1").b,A("D1").t]},
+      {id:"d1x1",dataType:"cipher",pts:[A("D1").b,A("X1").t]},
+      {id:"ivx1",dataType:"iv",pts:[A("IV").r,A("X1").l]},
+      {id:"x1p1",dataType:"plain",pts:[A("X1").b,A("P1").t]},
+      {id:"c2d2",dataType:"cipher",pts:[A("C2").b,A("D2").t]},
+      {id:"d2x2",dataType:"cipher",pts:[A("D2").b,A("X2").t]},
+      {id:"x2p2",dataType:"plain",pts:[A("X2").b,A("P2").t]},
+      // the all-important second job of C1:
+      {id:"fb",dataType:"cipher",pts:[A("C1").r,{x:midF,y:55},{x:midF,y:255},A("X2").l]}
+    ];
+    const steps=[
+      {light:["C1","C2","IV"],caption:"The receiver has the public IV and the two ciphertext blocks. Let's decrypt the normal way first."},
+      {light:["D1","D2"],edges:["c1d1","c2d2"],caption:"Both ciphertext blocks pass through AES decryption (D) with the secret key."},
+      {light:["X1"],edges:["d1x1","ivx1"],caption:"Block 1's output is XORed with the IV."},
+      {light:["P1"],edges:["x1p1"],do:[{id:"P1",label:"HELO"}],caption:"…and out comes P₁.   →   P₁ = D(K, C₁) ⊕ IV.  (There's your P₁.)"},
+      {light:["X2"],edges:["d2x2","fb"],caption:"Now the key idea: block 2 is XORed with C₁ itself. So C₁ does TWO jobs — its own block (left arrow) and the unlock-mix for the next block (right arrow)."},
+      {light:["P2"],edges:["x2p2"],do:[{id:"P2",label:"role=user"}],caption:"…giving P₂ = D(K, C₂) ⊕ C₁ = “role=user”. Normal decryption finished."},
+      {do:[{id:"C1",tint:"danger"}],caption:"⚡ The attacker now flips a few bits of C₁ in transit — no key needed. Watch BOTH arrows leaving C₁."},
+      {hot:true,edges:["c1d1"],do:[{id:"C1",tint:"danger"},{id:"P1",label:"▓?▞▚",tint:"danger"}],caption:"Job ① — the changed C₁ feeds its own D box, which now outputs noise. P₁ is destroyed. (This is where P₁ lives, and why it breaks.)"},
+      {hot:true,edges:["fb"],do:[{id:"C1",tint:"danger"},{id:"P1",label:"▓?▞▚",tint:"danger"},{id:"P2",label:"role=root",tint:"root"}],caption:"Job ② — in P₂'s XOR, flipping C₁ by Δ flips P₂ by exactly the same Δ. “user” → “root”, precisely as chosen. P₁ broke; P₂ was surgically rewritten. No key, no reading — integrity is gone."}
+    ];
+
+    const host=document.getElementById("atkDiagram");
+    const ctrl=Diagram(host,{viewBox:[1000,450],nodes,edges,steps});
+
+    /* --- the hex byte strip, synced to the animation --- */
     const USER=[0x75,0x73,0x65,0x72], ROOT=[0x72,0x6f,0x6f,0x74];
     const DELTA=USER.map((u,i)=>u^ROOT[i]);
-    const C1_ORIG=[0x3a,0x91,0xc7,0x05];
+    const C1B=[0x3a,0x91,0xc7,0x05];
     const c1Box=document.getElementById("atkC1");
-    const p1=document.getElementById("atkP1"), p2=document.getElementById("atkP2");
-    const note=document.getElementById("atkNote");
-    let flipped=false;
-
-    function hx(n){ return n.toString(16).padStart(2,"0"); }
-    function draw(c1,targetHighlight,changed){
+    const hx=n=>n.toString(16).padStart(2,"0");
+    function drawBytes(injected){
+      const bytes = injected ? C1B.map((b,i)=>b^DELTA[i]) : C1B;
       c1Box.innerHTML="";
-      c1.forEach((b,i)=>{
+      bytes.forEach((b,i)=>{
         const w=document.createElement("div"); w.className="byte";
-        const cls = changed ? "changed" : (targetHighlight?"target":"");
-        w.innerHTML=`<div class="b ${cls}">${hx(b)}</div><div class="c">byte ${i+1}</div>`;
+        w.innerHTML=`<div class="b ${injected?"changed":"target"}">${hx(b)}</div><div class="c">byte ${i+1}</div>`;
         c1Box.appendChild(w);
       });
     }
-    function reset(){
-      flipped=false; draw(C1_ORIG,true,false);
-      p1.textContent="HELO"; p1.style.color="var(--text)";
-      p2.textContent="role=user"; p2.style.color="var(--plain-d)";
-      note.textContent="These 4 bytes of C₁ line up with “user” in P₂. Press inject.";
+
+    const nar=document.getElementById("atkNote");
+    const pane=document.getElementById("attack");
+    const playBtn=pane.querySelector('[data-act="play"]');
+    ctrl.onCaption=t=>nar.textContent=t;
+    ctrl.onState=()=>{ playBtn.innerHTML=ctrl.playing?"⏸ Pause":"▶ Play the whole story"; };
+    ctrl.onStep=i=>drawBytes(i>=6);          // bytes flip exactly when the attacker strikes
+    ctrl.onCaption(ctrl.caption()); drawBytes(false);
+
+    pane.addEventListener("click",ev=>{
+      const act=ev.target.closest("[data-act]"); if(!act) return;
+      const a=act.dataset.act;
+      if(a==="play"){ ctrl.playing?ctrl.pause():ctrl.play(); }
+      else if(a==="step"){ ctrl.stepOnce(); }
+      else if(a==="reset"){ ctrl.reset(); }
+      else if(a==="inject"){ ctrl.pause(); if(ctrl.step<5) ctrl.jump(5); ctrl.play(); }
+    });
+    pane.addEventListener("input",ev=>{ if(ev.target.dataset.act==="speed") ctrl.speed=parseFloat(ev.target.value); });
+
+    /* auto-play once when the section scrolls into view */
+    if(!REDUCED){
+      let started=false;
+      new IntersectionObserver((es,obs)=>{
+        es.forEach(e=>{ if(e.isIntersecting && !started){ started=true; ctrl.play(); } });
+      },{threshold:.4}).observe(pane);
     }
-    function go(){
-      if(flipped) return;
-      flipped=true;
-      const c1new=C1_ORIG.map((b,i)=>b^DELTA[i]);
-      draw(c1new,false,true);
-      p1.textContent="▓?▞▚ (garbage)"; p1.style.color="var(--danger)";
-      p2.textContent="role=root"; p2.style.color="var(--iv-d)";
-      note.innerHTML="Done. C₁ is now garbage (so P₁ is destroyed), but P₂ flipped from <b style='color:var(--plain-d)'>user</b> to exactly <b style='color:var(--iv-d)'>root</b> — the change the attacker chose. No key. No reading. That's broken integrity.";
-    }
-    document.getElementById("atkGo").onclick=go;
-    document.getElementById("atkReset").onclick=reset;
-    reset();
   })();
 
 })();
